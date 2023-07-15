@@ -39,7 +39,7 @@ let postBookAppointment = (data) => {
           language: data.language,
           redirectLink: buildUrlEmail(data.doctorId, token),
         });
-
+        
         const user = await db.User.findOrCreate({
           where: { email: data.email },
           defaults: {
@@ -51,12 +51,32 @@ let postBookAppointment = (data) => {
           },
         });
 
+        // if (user && user[0]) {
+        //   await db.Booking.findOrCreate({
+        //     where: {
+        //       patientId: user[0].id,
+        //     },
+        //     defaults: {
+        //       statusId: "S1",
+        //       doctorId: data.doctorId,
+        //       patientId: user[0].id,
+        //       date: data.date,
+        //       reason: data.reason,
+        //       timeType: data.timeType,
+        //       token: token
+        //     },
+        //     });
+        //   }
+
         if (user && user[0]) {
-          await db.Booking.findOrCreate({
+          let booker = await db.Booking.findOne({
             where: {
               patientId: user[0].id,
             },
-            defaults: {
+            raw: false,
+            });
+          if(!booker) {
+            await db.Booking.create({
               statusId: "S1",
               doctorId: data.doctorId,
               patientId: user[0].id,
@@ -64,8 +84,20 @@ let postBookAppointment = (data) => {
               reason: data.reason,
               timeType: data.timeType,
               token: token
-            },
-          });
+            })
+          } else {
+            if(booker.statusId === "S2" || booker.statusId === "S3") {
+              booker.statusId = "S1"
+              booker.doctorId = data.doctorId
+              booker.patientId = user[0].id
+              booker.date = data.date
+              booker.reason = data.reason
+              booker.timeType = data.timeType
+              booker.token = token
+
+              await booker.save();
+            }
+          }
         }
 
         resolve({
@@ -91,6 +123,7 @@ let postVerifyBookAppointment = (data) => {
                   errMessage: "Missing parameter",
                 });
               } else {
+
                 let appointment = await db.Booking.findOne({
                     where: {
                         doctorId: data.doctorId,
@@ -99,6 +132,7 @@ let postVerifyBookAppointment = (data) => {
                     },
                     raw: false
                 })
+                console.log(appointment)
 
                 if(appointment) {
                     appointment.statusId = 'S2'
