@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import db from "../models/index";
+const jwt = require("jsonwebtoken");
 
+let refreshTokens = [];
 var salt = bcrypt.genSaltSync(10);
 
 let hashUserPassword = (password) => {
@@ -14,6 +16,28 @@ let hashUserPassword = (password) => {
   });
 };
 
+let generateAccessToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id,
+      roleId: user.roleId,
+    },
+    process.env.JWT_ACCESS_KEY,
+    { expiresIn: "30s" }
+  );
+};
+
+let generateRefreshToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id,
+      roleId: user.roleId,
+    },
+    process.env.JWT_REFRESH_KEY,
+    { expiresIn: "365d" }
+  );
+};
+
 let handleUserLogin = (email, password) => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -25,13 +49,35 @@ let handleUserLogin = (email, password) => {
         //compare password
 
         let user = await db.User.findOne({
-          attributes: ["id", "email", "roleId", "password","firstName","lastName"],
+          attributes: [
+            "id",
+            "email",
+            "roleId",
+            "password",
+            "firstName",
+            "lastName",
+          ],
           where: { email: email },
           raw: true,
         });
         if (user) {
           let check = bcrypt.compareSync(password, user.password); // false
           if (check) {
+            //Generate access token
+            const accessToken = generateAccessToken(user);
+            // Generate refresh token
+            const refreshToken = generateRefreshToken(user);
+            refreshTokens.push(refreshToken);
+            //STORE REFRESH TOKEN IN COOKIE
+            res.cookie("refreshToken", refreshToken, {
+              httpOnly: true,
+              secure:false,
+              path: "/",
+              sameSite: "strict",
+            });
+
+            userData.accessToken = accessToken
+            userData.refreshToken = refreshToken
             userData.errCode = 0;
             userData.errMessage = "Ok";
             delete user.password;
@@ -123,9 +169,9 @@ let createNewUser = (data) => {
           gender: data.gender,
           roleId: data.roleId,
           positionId: data.positionId,
-          image: data.avatar
+          image: data.avatar,
         });
-  
+
         resolve({
           errCode: 0,
           message: "Ok",
@@ -181,7 +227,7 @@ let updateUserData = (data) => {
         user.roleId = data.roleId;
         user.positionId = data.positionId;
         user.gender = data.gender;
-        if(data.avatar) {
+        if (data.avatar) {
           user.image = data.avatar;
         }
 
@@ -210,28 +256,28 @@ let updateUserData = (data) => {
 };
 
 let getAllCodeService = (typeInput) => {
-  return new Promise(async(resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
-      if(!typeInput) {
+      if (!typeInput) {
         resolve({
           errCode: 1,
-          errMessage: 'Missing required parameter !'
-        })
+          errMessage: "Missing required parameter !",
+        });
       } else {
-        let res = {}
+        let res = {};
         let allCode = await db.Allcode.findAll({
           where: { type: typeInput },
-        })
-        res.errCode = 0
-        res.data = allCode
+        });
+        res.errCode = 0;
+        res.data = allCode;
 
-        resolve(res)
+        resolve(res);
       }
     } catch (e) {
       reject(e);
     }
-  })
-}
+  });
+};
 
 module.exports = {
   handleUserLogin: handleUserLogin,

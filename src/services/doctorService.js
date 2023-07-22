@@ -171,7 +171,6 @@ let saveDetailInforDoctor = (inputData) => {
 let getDetailDoctorById = (inputId) => {
   return new Promise(async (resolve, reject) => {
     try {
-      console.log(inputId)
       if (!inputId) {
         resolve({
           errCode: 1,
