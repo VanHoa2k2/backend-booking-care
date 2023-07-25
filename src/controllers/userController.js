@@ -1,4 +1,5 @@
 import userService from '../services/userService'
+let refreshTokens = [];
 
 let handleLogin = async(req, res) => {
       let email = req.body.email
@@ -16,6 +17,15 @@ let handleLogin = async(req, res) => {
       // compare password
       // return userInfo
       // access_token:JWT json web token
+      refreshTokens.push(userData.refreshToken);
+      //STORE REFRESH TOKEN IN COOKIE
+      res.cookie("refreshToken", userData.refreshToken, {
+        httpOnly: true,
+        secure:false,
+        path: "/",
+        sameSite: "strict",
+      });
+
       return res.status(200).json({
             errCode: userData.errCode,
             message: userData.errMessage,

@@ -2,7 +2,6 @@ import bcrypt from "bcryptjs";
 import db from "../models/index";
 const jwt = require("jsonwebtoken");
 
-let refreshTokens = [];
 var salt = bcrypt.genSaltSync(10);
 
 let hashUserPassword = (password) => {
@@ -42,7 +41,6 @@ let handleUserLogin = (email, password) => {
   return new Promise(async (resolve, reject) => {
     try {
       let userData = {};
-
       let isExist = await checkUserEmail(email);
       if (isExist) {
         // user already exists
@@ -67,17 +65,9 @@ let handleUserLogin = (email, password) => {
             const accessToken = generateAccessToken(user);
             // Generate refresh token
             const refreshToken = generateRefreshToken(user);
-            refreshTokens.push(refreshToken);
-            //STORE REFRESH TOKEN IN COOKIE
-            res.cookie("refreshToken", refreshToken, {
-              httpOnly: true,
-              secure:false,
-              path: "/",
-              sameSite: "strict",
-            });
 
-            userData.accessToken = accessToken
-            userData.refreshToken = refreshToken
+            user.accessToken = accessToken
+            user.refreshToken = refreshToken
             userData.errCode = 0;
             userData.errMessage = "Ok";
             delete user.password;
